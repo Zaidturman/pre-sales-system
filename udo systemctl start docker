@@ -1,0 +1,26 @@
+[0;1;38:5:185mWarning: The unit file, source configuration file or drop-ins of docker.service changed on disk. Run 'systemctl daemon-reload' to reload units.[0m
+[0;1;32m●[0m docker.service - Docker Application Container Engine
+     Loaded: loaded (]8;;file://fedora/usr/lib/systemd/system/docker.service/usr/lib/systemd/system/docker.service]8;;; [0;1;32menabled[0m; preset: [0;1;38:5:185mdisabled[0m)
+    Drop-In: /usr/lib/systemd/system/service.d
+             └─]8;;file://fedora/usr/lib/systemd/system/service.d/10-timeout-abort.conf10-timeout-abort.conf]8;;, ]8;;file://fedora/usr/lib/systemd/system/service.d/50-keep-warm.conf50-keep-warm.conf]8;;
+     Active: [0;1;32mactive (running)[0m since Wed 2025-04-02 06:56:50 EET; 47min ago
+ Invocation: 89da8b34aa1e4218babd1cb705b05d13
+TriggeredBy: [0;1;32m●[0m docker.socket
+       Docs: ]8;;https://docs.docker.comhttps://docs.docker.com]8;;
+   Main PID: 1266 (dockerd)
+      Tasks: 10
+     Memory: 155.7M (peak: 160M)
+        CPU: 1.095s
+     CGroup: /system.slice/docker.service
+             └─[0;38;5;245m1266 /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock[0m
+
+Apr 02 06:56:46 fedora dockerd[1266]: time="2025-04-02T06:56:46.534947680+02:00" level=info msg="[graphdriver] using prior storage driver: overlay2"
+Apr 02 06:56:46 fedora dockerd[1266]: time="2025-04-02T06:56:46.539275676+02:00" level=info msg="Loading containers: start."
+Apr 02 06:56:46 fedora dockerd[1266]: time="2025-04-02T06:56:46.681986560+02:00" level=info msg="Firewalld: docker zone already exists, returning"
+Apr 02 06:56:49 fedora dockerd[1266]: time="2025-04-02T06:56:49.533806370+02:00" level=info msg="Loading containers: done."
+Apr 02 06:56:49 fedora dockerd[1266]: time="2025-04-02T06:56:49.812224117+02:00" level=info msg="Docker daemon" commit=bea4de2 containerd-snapshotter=false storage-driver=overlay2 version=28.0.2
+Apr 02 06:56:49 fedora dockerd[1266]: time="2025-04-02T06:56:49.812773726+02:00" level=info msg="Initializing buildkit"
+Apr 02 06:56:50 fedora dockerd[1266]: time="2025-04-02T06:56:50.391185747+02:00" level=info msg="Completed buildkit initialization"
+Apr 02 06:56:50 fedora dockerd[1266]: time="2025-04-02T06:56:50.410371003+02:00" level=info msg="Daemon has completed initialization"
+Apr 02 06:56:50 fedora dockerd[1266]: time="2025-04-02T06:56:50.410600938+02:00" level=info msg="API listen on /run/docker.sock"
+Apr 02 06:56:50 fedora systemd[1]: Started docker.service - Docker Application Container Engine.
