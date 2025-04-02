@@ -11,62 +11,78 @@
                 <div class="card">
                     <div class="card-body">
                         <h4 class="card-title">تعديل الفاتورة</h4><br><br>
+                        @if(session('success'))
+    <div class="alert alert-success">
+        {{ session('success') }}
+    </div>
+@endif
 
                         <div class="row">
                             <div class="col-md-6">
-                                <form method="post" >
-                                    @csrf
-                                    @method('PUT')
-                                    <div class="invoice-details">
-                                        <h5>تفاصيل الفاتورة</h5>
-                                        <div>
-                                            {{$invoice}}
-                                        </div>
-                                        <div class="row">
-                                            <div class="col">
-                                                <label for="invoice_no" class="form-label">رقم الفاتورة</label>
-                                                <input class="form-control" name="invoice_no" type="text" value="{{ $invoice->invoice_no }}" readonly>
-                                            </div>
-                                            <div class="col">
-                                                <label for="date" class="form-label">التاريخ</label>
-                                                <input class="form-control" name="date" type="date" value="{{ $invoice->date }}">
-                                            </div>
-                                        </div>
+                            <form method="POST" action="{{ route('invoices.update', $invoice->id) }}">
+    @csrf
+    @method('PUT')
 
-                                        <table class="table table-bordered">
-                                            <thead>
-                                                <tr>
-                                                    <th>المنتج</th>
-                                                    <th>الكمية</th>
-                                                    <th>السعر</th>
-                                                    <th>إجمالي</th>
-                                                    <th></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach($invoice->invoice_details as $item)
-                                                <tr>
-                                                    <td>
-                                                        <select name="product_id[]" class="form-select">
-                                                            @foreach($products as $product)
-                                                                <option value="{{ $product->id }}" {{ $product->id == $item->product_id ? 'selected' : '' }}>
-                                                                    {{ $product->name }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                    </td>
-                                                    <td><input type="number" name="quantity[]" class="form-control" value="{{ $item->quantity }}"></td>
-                                                    <td><input type="number" name="unit_price[]" class="form-control" value="{{ $item->unit_price }}"></td>
-                                                    <td><input type="number" class="form-control" value="{{ $item->total }}" readonly></td>
-                                                    <td><button type="button" class="btn btn-danger remove-row">X</button></td>
-                                                </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
+    <div class="invoice-details">
+        <!-- رقم الفاتورة والتاريخ -->
+        <div class="row">
+            <div class="col">
+                <label for="invoice_no" class="form-label">رقم الفاتورة</label>
+                <input class="form-control" name="invoice_no" type="text" value="{{ $invoice->invoice_no }}" readonly>
+            </div>
+            <div class="col">
+                <label for="date" class="form-label">التاريخ</label>
+                <input class="form-control" name="date" type="date" value="{{ $invoice->date }}">
+            </div>
+        </div>
 
-                                        <button type="button" class="btn btn-success" id="updateInvoiceButton">تحديث الفاتورة</button>
-                                    </div>
-                                </form>
+        <!-- تفاصيل الفاتورة (المنتج، الكمية، السعر) -->
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>المنتج</th>
+                    <th>الكمية</th>
+                    <th>السعر</th>
+                    <th>إجمالي</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($invoice->invoice_details as $item)
+                    <tr>
+                        <!-- قائمة المنتجات -->
+                        <td>
+                            <select name="product_id[]" class="form-select">
+                                @foreach($products as $product)
+                                    <option value="{{ $product->id }}" {{ $product->id == $item->product_id ? 'selected' : '' }}>
+                                        {{ $product->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </td>
+
+                        <!-- الكمية -->
+                        <td><input type="number" name="quantity[]" class="form-control" value="{{ $item->selling_qty }}"></td>
+
+                        <!-- السعر -->
+                        <td><input type="number" name="unit_price[]" class="form-control" value="{{ $item->unit_price }}"></td>
+
+                        <!-- إجمالي السعر (قيمة قراءة فقط) -->
+                        <td><input type="number" class="form-control" value="{{ $item->selling_price }}" readonly></td>
+
+                        <!-- حذف السطر -->
+                        <td><button type="button" class="btn btn-danger remove-row">X</button></td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        <!-- زر التحديث -->
+        <button type="submit" class="btn btn-success">تحديث الفاتورة</button>
+    </div>
+</form>
+
+                                
                             </div>
                         </div>
                     </div>
@@ -153,7 +169,7 @@
         // إرسال الطلب إلى السيرفر
         $.ajax({
             url: "{{ route('invoices.update', $invoice->id) }}", // استبدل بـ المسار الصحيح
-            method: "POST",
+            method: "PUT",
             data: invoiceDetails,
             headers: {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')

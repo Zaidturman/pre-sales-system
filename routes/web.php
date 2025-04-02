@@ -62,6 +62,7 @@ Route::get('/search', [InvoiceController::class, 'search'])->name('invoice.searc
 
 Route::get('/invoices/{id}/edit', [InvoiceController::class, 'edit'])->name('invoices.edit');
 Route::put('/invoices/{id}', [InvoiceController::class, 'update'])->name('invoices.update');
+
 // Admin All route
 Route::middleware(['auth'])->group(function () {
     Route::controller(AdminController::class)->group(Function(){

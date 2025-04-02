@@ -37,6 +37,16 @@ services:
       - db_data:/var/lib/mysql
     ports:
       - "3306:3306"
+  phpmyadmin:
+    image: phpmyadmin
+    container_name: phpmyadmin
+    restart: always
+    ports:
+      - "8081:80"  # ← تجنب التعارض مع Nginx
+    environment:
+      PMA_ARBITRARY: 1
+      PMA_HOST: db  # ← الربط بحاوية قاعدة البيانات
+      MYSQL_ROOT_PASSWORD: root
 
 volumes:
   db_data:

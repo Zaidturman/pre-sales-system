@@ -66,31 +66,79 @@ class InvoiceController extends Controller
             return redirect()->back()->with('error', 'الفاتورة غير موجودة');
         }
     
-        $customers = Customer::all(); // جلب كل العملاء لاستخدامهم في الاختيار
+        $customers =  Invoice::with(['customer', 'invoice_details.product'])->find($id);
         $products = Product::all(); // جلب كل المنتجات لاستخدامها في الاختيار
         return view('backend.invoice.invoice_edit', compact('invoice', 'customers', 'products'));    }
     
-      // تحديث بيانات الفاتورة
-      public function update(Request $request, $id)
-      {
-          $request->validate([
-              'customer_name' => 'required|string|max:255',
-              'amount' => 'required|numeric|min:0',
-              'status' => 'required|in:pending,paid,canceled',
-              'due_date' => 'required|date',
-          ]);
-  
-          $invoice = Invoice::findOrFail($id);
-          $invoice->update([
-              'customer_name' => $request->customer_name,
-              'amount' => $request->amount,
-              'status' => $request->status,
-              'due_date' => $request->due_date,
-          ]);
-  
-          return redirect()->route('invoices.index')->with('success', 'تم تحديث الفاتورة بنجاح!');
-      }
-    public function InvoiceAll()
+        public function update(Request $request, $id)
+        {
+            // التحقق من صحة المدخلات
+            $request->validate([
+                'invoice_no' => 'required|string|max:255',
+                'date' => 'required|date',
+                'product_id' => 'required|array',
+                'product_id.*' => 'exists:products,id',
+                'quantity' => 'required|array',
+                'quantity.*' => 'numeric|min:1',
+                'unit_price' => 'required|array',
+                'unit_price.*' => 'numeric|min:0',
+            ]);
+        
+            // استرجاع الفاتورة
+            $invoice = Invoice::findOrFail($id);
+        
+            // تحديث الفاتورة الرئيسية
+            $invoice->update([
+                'invoice_no' => $request->invoice_no,
+                'date' => $request->date,
+            ]);
+        
+            $totalAmount = 0;
+        
+            // تحديث تفاصيل الفاتورة
+            foreach ($request->product_id as $index => $productId) {
+                $invoiceDetail = $invoice->invoice_details[$index];  // استرجاع تفاصيل الفاتورة الحالية باستخدام الفهرس
+                $sellingPrice = $request->quantity[$index] * $request->unit_price[$index]; // حساب السعر الإجمالي
+                $invoiceDetail->update([
+                    'product_id' => $productId,
+                    'selling_qty' => $request->quantity[$index],
+                    'unit_price' => $request->unit_price[$index],
+                    'selling_price' => $sellingPrice,
+                ]);
+                // إضافة السعر الإجمالي إلى المجموع
+                $totalAmount += $sellingPrice;
+            }
+     
+            // تحديث المدفوعات بناءً على المجموع الجديد
+            $payment = Payment::where('invoice_id', $invoice->id)->first();
+        
+            if ($payment) {
+                // تحديث بيانات الدفع
+                $payment->total_amount = $totalAmount;
+        
+                // تحديث حالة الدفع (مثال على ذلك: إذا كانت المدفوعات كاملة أو جزئية)
+                if ($payment->paid_status == 'full_paid') {
+                    $payment->paid_amount = $totalAmount;
+                    $payment->due_amount = 0;
+                } elseif ($payment->paid_status == 'partial_paid') {
+                    $payment->due_amount = $totalAmount - $payment->paid_amount;
+                } else {
+                    $payment->due_amount = $totalAmount;
+                }
+        
+                // حفظ التعديلات
+                $payment->save();
+        
+            
+            }
+        
+            // إرجاع إشعار النجاح
+            return redirect()->back()->with('success', 'تم تحديث الفاتورة والمدفوعات بنجاح!');
+        }
+        
+        
+
+           public function InvoiceAll()
     {
         $allData = Invoice::orderBy('date', 'desc')->orderBy('id', 'desc')->where('status', '1')->get();
         return view('backend.invoice.invoice_all', compact('allData'));
