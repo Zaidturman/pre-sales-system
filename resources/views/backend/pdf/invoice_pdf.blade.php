@@ -190,9 +190,12 @@
                                             </table>
                                         </div>
                                         @php
-$message = "مرحبا،%0A";
-$message .= "إليك تفاصيل الفاتورة رقم: " . $invoice->invoice_no . "%0A";
-$message .= "بتاريخ: " . date('d-m-Y', strtotime($invoice->date)) . "%0A";
+$customer_name = $payment['customer']['name'] ?? 'الزبون';
+$message = "مرحباً {$customer_name} 👋،%0A";
+$message .= "معك فحم الزين 🔥%0A";
+$message .= "إليك تفاصيل الفاتورة الخاصة بك:%0A";
+$message .= "رقم الفاتورة: " . $invoice->invoice_no . "%0A";
+$message .= "التاريخ: " . date('d-m-Y', strtotime($invoice->date)) . "%0A";
 $message .= "----------------------------%0A";
 
 foreach($invoice['invoice_details'] as $key => $details) {
@@ -205,6 +208,7 @@ $message .= "المبلغ الكلي: " . $payment->total_amount . "₪%0A";
 $message .= "الخصم: " . $payment->discount_amount . "₪%0A";
 $message .= "المدفوع: " . $payment->paid_amount . "₪%0A";
 $message .= "المتبقي: " . $payment->due_amount . "₪%0A";
+$message .= "شكراً لتعاملكم معنا 😊";
 @endphp
 
                                         <!-- زر ارسال الفاتورة عبر الواتساب -->
