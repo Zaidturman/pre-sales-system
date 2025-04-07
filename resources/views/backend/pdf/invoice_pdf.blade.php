@@ -189,13 +189,31 @@
                                                 </tbody>
                                             </table>
                                         </div>
+                                        @php
+$message = "مرحبا،%0A";
+$message .= "إليك تفاصيل الفاتورة رقم: " . $invoice->invoice_no . "%0A";
+$message .= "بتاريخ: " . date('d-m-Y', strtotime($invoice->date)) . "%0A";
+$message .= "----------------------------%0A";
+
+foreach($invoice['invoice_details'] as $key => $details) {
+    $message .= ($key+1) . "- " . $details['product']['name'] . "%0A";
+    $message .= "الكمية: " . $details->selling_qty . " × " . $details->unit_price . "₪ = " . $details->selling_price . "₪%0A";
+}
+
+$message .= "----------------------------%0A";
+$message .= "المبلغ الكلي: " . $payment->total_amount . "₪%0A";
+$message .= "الخصم: " . $payment->discount_amount . "₪%0A";
+$message .= "المدفوع: " . $payment->paid_amount . "₪%0A";
+$message .= "المتبقي: " . $payment->due_amount . "₪%0A";
+@endphp
 
                                         <!-- زر ارسال الفاتورة عبر الواتساب -->
                                         <div class="d-print-none">
-                                            <div class="float-end">
-                                                <a href="https://wa.me/{{ $payment['customer']['mobile_no'] }}?text=مرحبا،%0Aإليك%20الفاتورة%20رقم%20{{ $invoice->invoice_no }}%20التي%20قمت%20بإصدارها%20بتاريخ%20{{ date('d-m-Y',strtotime($invoice->date)) }}%0Aالمبلغ%20الإجمالي%20₪{{ $payment->total_amount }}" target="_blank" class="btn btn-success waves-effect waves-light">
-                                                    <i class="fab fa-whatsapp"></i> إرسال عبر الواتساب
-                                                </a>
+                                            <div class="float-end"><a href="https://wa.me/{{ $payment['customer']['mobile_no'] }}?text={{ $message }}" 
+   target="_blank" 
+   class="btn btn-success waves-effect waves-light">
+    <i class="fab fa-whatsapp"></i> إرسال كافة التفاصيل عبر الواتساب
+</a>
                                             </div>
                                         </div>
                                         <div class="d-print-none mr-5">

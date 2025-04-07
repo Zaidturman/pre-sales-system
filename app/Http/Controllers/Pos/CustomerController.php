@@ -54,7 +54,35 @@ class CustomerController extends Controller
 
         return redirect()->route('customer.all')->with($notification);
     }
+    public function CustomerStorePOS(Request $request)
+    {
+       
+        // التحقق من البيانات الواردة
+    $request->validate([
+        'name' => 'required|string|max:255',
+        
+    ]);
 
+    // حفظ الزبون في قاعدة البيانات
+    $customer = new Customer();
+    $customer->name = $request->name;
+    $customer->mobile_no = "";
+    $customer->email = "";
+    $customer->address = "";
+    $customer->created_by = Auth::user()->id;
+    $customer->created_at = Carbon::now();
+
+    $customer->save(); // حفظ الزبون
+
+    // إرسال رسالة النجاح
+    $notification = [
+        'message' => 'تم إضافة الزبون بنجاح!',
+        'alert-type' => 'success',
+    ];
+
+    // إعادة التوجيه إلى نفس الصفحة مع رسالة النجاح
+    return redirect()->back()->with($notification);
+    }
     public function CustomerEdit($id){
         $customer = Customer::FindOrFail($id);
         return view('backend.customer.customer_edit',compact('customer'));

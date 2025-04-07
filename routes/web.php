@@ -201,6 +201,8 @@ Route::middleware('auth')->group(function(){
         Route::get('/customer/all','CustomerAll')->name('customer.all');
         Route::get('/customer/add','CustomerAdd')->name('customer.add');
         Route::post('/customer/store','CustomerStore')->name('customer.store');
+        Route::post('/customer/store/pos','CustomerStorePOS')->name('customer.storepos');
+
 
         Route::get('/customer/edit/{id}','CustomerEdit')->name('customer.edit');
         Route::get('/customer/view/{id}','CustomerView')->name('customer.view');
