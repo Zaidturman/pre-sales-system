@@ -57,84 +57,125 @@ class InvoiceController extends Controller
     
         return response()->json($output);
     }
-    public function edit($id)
-    {
-    
-        $invoice = Invoice::with(['invoice_details.product', 'customer'])->find($id);
+  public function edit($id)
+{
+    $invoice = Invoice::with(['invoice_details.product', 'payment'])->find($id);
 
-        if (!$invoice) {
-            return redirect()->back()->with('error', 'الفاتورة غير موجودة');
-        }
-    
-        $customers =  Invoice::with(['customer', 'invoice_details.product'])->find($id);
-        $products = Product::all(); // جلب كل المنتجات لاستخدامها في الاختيار
-        return view('backend.invoice.invoice_edit', compact('invoice', 'customers', 'products'));    }
-    
-        public function update(Request $request, $id)
-        {
-            // التحقق من صحة المدخلات
-            $request->validate([
-                'invoice_no' => 'required|string|max:255',
-                'date' => 'required|date',
-                'product_id' => 'required|array',
-                'product_id.*' => 'exists:products,id',
-                'quantity' => 'required|array',
-                'quantity.*' => 'numeric|min:1',
-                'unit_price' => 'required|array',
-                'unit_price.*' => 'numeric|min:0',
-            ]);
-        
-            // استرجاع الفاتورة
-            $invoice = Invoice::findOrFail($id);
-        
-            // تحديث الفاتورة الرئيسية
-            $invoice->update([
-                'invoice_no' => $request->invoice_no,
-                'date' => $request->date,
-            ]);
-        
-            $totalAmount = 0;
-        
-            // تحديث تفاصيل الفاتورة
-            foreach ($request->product_id as $index => $productId) {
-                $invoiceDetail = $invoice->invoice_details[$index];  // استرجاع تفاصيل الفاتورة الحالية باستخدام الفهرس
-                $sellingPrice = $request->quantity[$index] * $request->unit_price[$index]; // حساب السعر الإجمالي
-                $invoiceDetail->update([
+    if (!$invoice) {
+        return redirect()->back()->with('error', 'الفاتورة غير موجودة');
+    }
+
+    $customers = Customer::all();
+    $products = Product::all();
+    $paymentMethods = ['نقدي شيكل', 'نقدي دينار', 'شيك', 'حوالة بنكية'];
+
+    return view('backend.invoice.invoice_edit', compact(
+        'invoice', 
+        'customers', 
+        'products',
+        'paymentMethods'
+    ));
+}
+ public function update(Request $request, $id)
+{
+    // التحقق من صحة المدخلات
+    $request->validate([
+        'invoice_no' => 'required|string|max:255',
+        'date' => 'required|date',
+        'payment_method' => 'required|in:نقدي شيكل,نقدي دينار,شيك,حوالة بنكية',
+        'discount_amount' => 'nullable|numeric|min:0',
+        'product_id' => 'required|array',
+        'product_id.*' => 'exists:products,id',
+        'selling_qty' => 'required|array',
+        'selling_qty.*' => 'numeric|min:1',
+        'unit_price' => 'required|array',
+        'unit_price.*' => 'numeric|min:0',
+        'paid_status' => 'required|in:full_paid,partial_paid,full_due',
+        'paid_amount' => 'nullable|numeric|min:0'
+    ]);
+
+    // استرجاع الفاتورة
+    $invoice = Invoice::findOrFail($id);
+
+    DB::transaction(function () use ($request, $invoice, $id) {
+        // تحديث الفاتورة الرئيسية
+        $invoice->update([
+            'date' => $request->date,
+            'payment_method' => $request->payment_method,
+            'discount_amount' => $request->discount_amount ?? 0,
+        ]);
+
+        $totalAmount = 0;
+        $existingDetails = $invoice->invoice_details->pluck('id')->toArray();
+        $updatedDetails = $request->input('existing_details', []);
+
+        // تحديث أو إنشاء تفاصيل الفاتورة
+        foreach ($request->product_id as $index => $productId) {
+            $sellingPrice = $request->selling_qty[$index] * $request->unit_price[$index];
+            $totalAmount += $sellingPrice;
+
+            if (isset($updatedDetails[$index])) {
+                // تحديث السجل الموجود
+                InvoiceDetail::where('id', $updatedDetails[$index])->update([
                     'product_id' => $productId,
-                    'selling_qty' => $request->quantity[$index],
+                    'selling_qty' => $request->selling_qty[$index],
                     'unit_price' => $request->unit_price[$index],
                     'selling_price' => $sellingPrice,
                 ]);
-                // إضافة السعر الإجمالي إلى المجموع
-                $totalAmount += $sellingPrice;
+            } else {
+                // إنشاء سجل جديد
+                InvoiceDetail::create([
+                    'invoice_id' => $invoice->id,
+                    'product_id' => $productId,
+                    'selling_qty' => $request->selling_qty[$index],
+                    'unit_price' => $request->unit_price[$index],
+                    'selling_price' => $sellingPrice,
+                    'date' => $request->date,
+                    'status' => '1'
+                ]);
             }
-     
-            // تحديث المدفوعات بناءً على المجموع الجديد
-            $payment = Payment::where('invoice_id', $invoice->id)->first();
-        
-            if ($payment) {
-                // تحديث بيانات الدفع
-                $payment->total_amount = $totalAmount;
-        
-                // تحديث حالة الدفع (مثال على ذلك: إذا كانت المدفوعات كاملة أو جزئية)
-                if ($payment->paid_status == 'full_paid') {
-                    $payment->paid_amount = $totalAmount;
-                    $payment->due_amount = 0;
-                } elseif ($payment->paid_status == 'partial_paid') {
-                    $payment->due_amount = $totalAmount - $payment->paid_amount;
-                } else {
-                    $payment->due_amount = $totalAmount;
-                }
-        
-                // حفظ التعديلات
-                $payment->save();
-        
-            
-            }
-        
-            // إرجاع إشعار النجاح
-            return redirect()->back()->with('success', 'تم تحديث الفاتورة والمدفوعات بنجاح!');
         }
+
+        // حذف العناصر المحذوفة
+        $toDelete = array_diff($existingDetails, $updatedDetails);
+        if (!empty($toDelete)) {
+            InvoiceDetail::whereIn('id', $toDelete)->delete();
+        }
+
+        // تحديث بيانات الدفع
+        $payment = Payment::where('invoice_id', $invoice->id)->firstOrNew();
+        $payment->invoice_id = $invoice->id;
+        $payment->customer_id = $request->customer_id;
+        $payment->paid_status = $request->paid_status;
+        $payment->discount_amount = $request->discount_amount ?? 0;
+        $payment->total_amount = $totalAmount - ($request->discount_amount ?? 0);
+
+        if ($request->paid_status == 'full_paid') {
+            $payment->paid_amount = $totalAmount - ($request->discount_amount ?? 0);
+            $payment->due_amount = 0;
+        } elseif ($request->paid_status == 'partial_paid') {
+            $payment->paid_amount = $request->paid_amount;
+            $payment->due_amount = ($totalAmount - ($request->discount_amount ?? 0)) - $request->paid_amount;
+        } else {
+            $payment->paid_amount = 0;
+            $payment->due_amount = $totalAmount - ($request->discount_amount ?? 0);
+        }
+        $payment->save();
+
+        // تحديث تفاصيل الدفع
+        if ($request->paid_status == 'partial_paid' || $request->paid_status == 'full_paid') {
+            $paymentDetail = PaymentDetail::updateOrCreate(
+                ['invoice_id' => $invoice->id],
+                [
+                    'date' => $request->date,
+                    'current_paid_amount' => $payment->paid_amount
+                ]
+            );
+        }
+    });
+
+    return redirect()->route('invoice.all')->with('success', 'تم تحديث الفاتورة بنجاح');
+}
         
         
 
@@ -165,25 +206,20 @@ class InvoiceController extends Controller
 
     public function InvoiceStore(Request $request)
     {
-        //return $request->all();
-        if ($request->category_id == null) {
-            $notification = array(
-                'message' => 'Sorry No Category information found',
-                'alert-type' => 'error'
-            );
-            return redirect()->back()->with($notification);
-        } else {
+                if ($request->category_id == null) {
+                return redirect()->back()->with('error', 'لم يتم اختيار أي فئة');
+            }
+
             if ($request->paid_amount > $request->estimated_amount) {
-                $notification = array(
-                    'message' => 'Sorry Paid Amount is bigger then total price',
-                    'alert-type' => 'error'
-                );
-                return redirect()->back()->with($notification);
-            } else {
+                return redirect()->back()->with('error', 'المبلغ المدفوع أكبر من الإجمالي');
+            }
+
                 $invoice = new Invoice();
                 $invoice->invoice_no = $request->invoice_no;
                 $invoice->date = date('Y-m-d', strtotime($request->date));
                 $invoice->description = $request->description;
+                $invoice->payment_method = $request->payment_method; // إضافة طريقة الدفع
+                $invoice->discount_amount = $request->discount_amount ?? 0; // إضافة الخصم
                 $invoice->status = '1';
                 $invoice->created_by = Auth::user()->id;
 
@@ -227,12 +263,11 @@ class InvoiceController extends Controller
 
                         $payment = new Payment();
                         $payment_details = new PaymentDetail();
-
-                        $payment->invoice_id = $invoice->id;
-                        $payment->customer_id = $customer_id;
-                        $payment->paid_status = $request->paid_status;
-                        $payment->discount_amount = $request->discount_amount;
-                        $payment->total_amount = $request->estimated_amount;
+            $payment->invoice_id = $invoice->id;
+            $payment->customer_id = $request->customer_id == '0' ? $customer_id : $request->customer_id;
+            $payment->paid_status = $request->paid_status;
+            $payment->discount_amount = $request->discount_amount ?? 0;
+            $payment->total_amount = $request->estimated_amount - ($request->discount_amount ?? 0);
 
                         if ($request->paid_status == 'full_paid') {
                             $payment->paid_amount = $request->estimated_amount;
@@ -254,14 +289,15 @@ class InvoiceController extends Controller
                         $payment_details->save();
                     }
                 });
-            }
-        }
+       
         $notification = array(
             'message' => 'Invoice Data Inserted Successfully',
             'alert-type' => 'success'
         );
         return redirect()->route('invoice.all')->with($notification);
     }
+
+
     public function InvoiceDelete($invoice_no)
     {
         $invoice = Invoice::where('invoice_no', $invoice_no)->first();
@@ -306,8 +342,9 @@ class InvoiceController extends Controller
 
     public function InvoiceApprove($id)
     {
-        $invoice = invoice::with('invoice_details')->FindOrFail($id);
-        return view('backend.invoice.invoice_approve', compact('invoice'));
+      $invoice = Invoice::with('invoice_details')->FindOrFail($id);
+    $paymentMethods = ['نقدي شيكل', 'نقدي دينار', 'شيك', 'حوالة بنكية'];
+    return view('backend.invoice.invoice_approve', compact('invoice', 'paymentMethods'));
     }
 
     public function ApprovalStore(Request $request, $id)
@@ -365,6 +402,17 @@ class InvoiceController extends Controller
         // استرجاع المستخدم الذي أنشأ الفاتورة
         $creator = User::find($createdById);
         // الحصول على اسم المستخدم
+            // تعريف طرق الدفع المتاحة
+    $paymentMethods = [
+        'cash_shekel' => 'نقدي شيكل',
+        'cash_dinar' => 'نقدي دينار',
+        'check' => 'شيك',
+        'bank_transfer' => 'حوالة بنكية'
+    ];
+    
+    // الحصول على اسم طريقة الدفع بالعربية
+    $invoice->payment_method_name = $paymentMethods[$invoice->payment_method] ?? $invoice->payment_method;
+    
         $creatorName =  $creator->name;
         return view('backend.pdf.invoice_pdf', compact('invoice', 'creatorName'));
     }
@@ -374,11 +422,45 @@ class InvoiceController extends Controller
         return view('backend.invoice.daily_invoice_report');
     }
 
-    public function DailyInvoicePdf(Request $request)
-    {
-        $start_date = date('Y-m-d', strtotime($request->start_date));
-        $end_date = date('Y-m-d', strtotime($request->end_date));
-        $allData = Invoice::whereBetween('date', [$start_date, $end_date])->where('status', '1')->get();
-        return view('backend.pdf.daily_invoice_report_pdf', compact('allData', 'start_date', 'end_date'));
+   public function DailyInvoicePdf(Request $request)
+{
+    $start_date = date('Y-m-d', strtotime($request->start_date));
+    $end_date = date('Y-m-d', strtotime($request->end_date));
+    
+    $allData = Invoice::whereBetween('date', [$start_date, $end_date])
+        ->where('status', '1')
+        ->with(['payment', 'invoice_details.product'])
+        ->get();
+        
+    // حساب إجمالي المبيعات والخصومات
+    $totalSales = $allData->sum(function($invoice) {
+        return $invoice->payment->total_amount + $invoice->discount_amount;
+    });
+    
+    $totalDiscount = $allData->sum('discount_amount');
+    
+    // حساب المبيعات حسب طريقة الدفع
+    $paymentMethodsSummary = [
+        'نقدي شيكل' => 0,
+        'نقدي دينار' => 0,
+        'شيك' => 0,
+        'حوالة بنكية' => 0
+    ];
+    
+    foreach ($allData as $invoice) {
+        if (isset($paymentMethodsSummary[$invoice->payment_method])) {
+            $paymentMethodsSummary[$invoice->payment_method] += 
+                $invoice->payment->total_amount + $invoice->discount_amount;
+        }
     }
+
+    return view('backend.pdf.daily_invoice_report_pdf', compact(
+        'allData',
+        'start_date',
+        'end_date',
+        'totalSales',
+        'totalDiscount',
+        'paymentMethodsSummary'
+    ));
+}
 }

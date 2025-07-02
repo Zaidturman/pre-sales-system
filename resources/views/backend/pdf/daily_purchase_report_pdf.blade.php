@@ -3,6 +3,33 @@
 
 <div class="page-content">
     <div class="container-fluid">
+        <!-- Search Form -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <form method="GET" action="" class="d-flex align-items-center">
+            <!-- الحفاظ على الـ params الحالية -->
+            <input type="hidden" name="start_date" value="{{ request('start_date') }}">
+            <input type="hidden" name="end_date" value="{{ request('end_date') }}">
+            
+            <input type="text" name="search" class="form-control me-2" placeholder="ابحث عن اسم المنتج..." value="{{ request('search') }}" style="max-width: 300px;">
+            <button type="submit" class="btn btn-primary">بحث</button>
+        </form>
+            </div>
+        </div>
+        <!-- Search Results Summary -->
+        @if(isset($searchSummary))
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <strong>نتائج البحث عن المنتج:</strong> <span class="text-primary">{{ $searchSummary['item_name'] }}</span><br>
+                    <strong>عدد مرات الشراء:</strong> {{ $searchSummary['count'] }}<br>
+                    <strong>إجمالي الكمية:</strong> {{ $searchSummary['total_qty'] }}<br>
+                    <strong>إجمالي المبلغ:</strong> ₪{{ $searchSummary['total_amount'] }}<br>
+                    <strong>الموردون:</strong> {{ implode('، ', $searchSummary['suppliers']) }}
+                </div>
+            </div>
+        </div>
+        @endif
 
         <!-- start page title -->
         <div class="row">
@@ -70,7 +97,7 @@
                             <div class="col-12">
                                 <div>
                                     <div class="p-2">
-                                        <h3 class="font-size-16"><strong>فاتورة رقم: {{ $purchase_no }}</strong></h3>
+                                    <h3 class="font-size-16"><strong>فاتورة رقم: {{ $purchase_no }} /<span  class="font-size-16 text-danger "> المورد : {{ $purchases->first()->supplier->name }}</span></strong></h3>
                                     </div>
                                     <div class="table-responsive">
                                         <table class="table">
@@ -85,6 +112,7 @@
                                                     <th>المبلغ الاجمالي</th>
 
                                                 </tr>
+                                                
                                             </thead>
                                             <tbody>
                                                 @foreach($purchases as $key => $item)

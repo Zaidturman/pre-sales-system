@@ -15,6 +15,8 @@ class PartialPayment extends Model
         'amount',
 
         'payment_date',
+         'discount_amount',
+        'payment_method',
     ];
 
     // إنشاء علاقة الربط مع نموذج Customer
