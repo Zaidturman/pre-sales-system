@@ -132,7 +132,23 @@
                                                     <option value="0">زبون جديد</option>
                                                 </select>
                                             </div>
-
+<div class="row mb-3">
+    <div class="col-md-6">
+        <label for="payment_method">طريقة الدفع</label>
+        <select name="payment_method" id="payment_method" class="form-select" required>
+            <option value="">اختر طريقة الدفع</option>
+            <option value="cash_shekel">نقدي شيكل</option>
+            <option value="cash_dinar">نقدي دينار</option>
+            <option value="check">شيك</option>
+            <option value="bank_transfer">حوالة بنكية</option>
+        </select>
+    </div>
+    <div class="col-md-6">
+        <label for="discount_amount">مبلغ الخصم</label>
+        <input type="number" name="discount_amount" id="discount_amount" 
+               class="form-control" value="0" min="0" step="0.01">
+    </div>
+</div>
                                         </div>
 
                                         <!-- Hide Add Customer Form -->
@@ -197,7 +213,36 @@
         </td>
     </tr>
 </script>
+<script>
+$(document).ready(function() {
+    // حساب الإجمالي مع الخصم
+    function calculateTotalWithDiscount() {
+        let total = 0;
+        $(".selling_price").each(function() {
+            let value = parseFloat($(this).val()) || 0;
+            total += value;
+        });
+        
+        let discount = parseFloat($("#discount_amount").val()) || 0;
+        let netTotal = total - discount;
+        
+        $("#estimated_amount").text(netTotal.toFixed(2));
+        $("#estimated_amount_input").val(netTotal.toFixed(2));
+    }
 
+    // تحديث عند تغيير الكمية أو السعر
+    $(document).on('keyup change', '.unit_price, .selling_qty', function() {
+        let row = $(this).closest("tr");
+        let qty = parseFloat(row.find(".selling_qty").val()) || 0;
+        let price = parseFloat(row.find(".unit_price").val()) || 0;
+        row.find(".selling_price").val((qty * price).toFixed(2));
+        calculateTotalWithDiscount();
+    });
+
+    // تحديث عند تغيير الخصم
+    $("#discount_amount").on('input', calculateTotalWithDiscount);
+});
+</script>
 <script>
     var selectedCategoryName = '';
 

@@ -67,6 +67,8 @@
                                                         <td class="text-center"><strong>الايميل</strong>
                                                         <td class="text-center"><strong>الملاحظات</strong>
                                                         </td>
+                                                        <td class="text-center"><strong>طريقة الدفع</strong>
+                                                        </td>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -75,6 +77,7 @@
                                                         <td class="text-center">{{ $payment['customer']['mobile_no']?? Null }}</td>
                                                         <td class="text-center">{{ $payment['customer']['email']?? Null }}</td>
                                                         <td class="text-center">{{ $invoice->description }}</td>
+                                                        <td class="text-center">{{ $invoice->payment_method_name }}</td>
                                                     </tr>
                                                 </tbody>
                                             </table>
@@ -185,6 +188,7 @@
                                                         <td class="no-line text-end">
                                                             <h4 class="m-0">₪{{ $payment->total_amount }}</h4>
                                                         </td>
+ 
                                                     </tr>
                                                 </tbody>
                                             </table>

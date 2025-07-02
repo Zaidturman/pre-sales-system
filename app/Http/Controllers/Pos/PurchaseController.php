@@ -178,11 +178,43 @@ class PurchaseController extends Controller
         return view('backend.purchase.daily_purchase_report');
     }
 
-    public function DailyPurchasePdf(Request $request){
-        $start_date = date('Y-m-d',strtotime($request->start_date));
-        $end_date = date('Y-m-d',strtotime($request->end_date));
-        $allData = Purchase::with(['product.unit', 'purchasePayments'])->whereBetween('date',[$start_date,$end_date])->where('status','1')->get();
-       $groupedData= $allData->groupBy('purchase_no');
-        return view('backend.pdf.daily_purchase_report_pdf',compact('allData','groupedData','start_date','end_date'));
+  public function DailyPurchasePdf(Request $request){
+    $start_date = date('Y-m-d',strtotime($request->start_date));
+    $end_date = date('Y-m-d',strtotime($request->end_date));
+    $allData = Purchase::with(['product.unit', 'purchasePayments', 'supplier'])
+        ->whereBetween('date',[$start_date,$end_date])
+        ->where('status','1')
+        ->get();
+    $groupedData = $allData->groupBy('purchase_no');
+
+    $searchSummary = null;
+    if ($request->filled('search')) {
+        $searchTerm = $request->input('search');
+        $filtered = $allData->filter(function($item) use ($searchTerm) {
+            return stripos($item->product->name, $searchTerm) !== false;
+        });
+        if ($filtered->count() > 0) {
+            $total_qty = $filtered->sum('buying_qty');
+            $total_amount = $filtered->sum('buying_price');
+            $suppliers = $filtered->pluck('supplier.name')->unique()->toArray();
+            $searchSummary = [
+                'item_name' => $searchTerm,
+                'count' => $filtered->count(),
+                'total_qty' => $total_qty,
+                'total_amount' => $total_amount,
+                'suppliers' => $suppliers,
+            ];
+        } else {
+            $searchSummary = [
+                'item_name' => $searchTerm,
+                'count' => 0,
+                'total_qty' => 0,
+                'total_amount' => 0,
+                'suppliers' => [],
+            ];
+        }
     }
+
+    return view('backend.pdf.daily_purchase_report_pdf', compact('allData', 'groupedData', 'start_date', 'end_date', 'searchSummary'));
+}
 }

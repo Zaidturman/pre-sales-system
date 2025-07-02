@@ -16,7 +16,8 @@ class PurchasePayment extends Model
         'paid_amount',
         'due_amount',
         'total_amount',
-
+        'discount_amount',
+        'payment_method',
     ];
 
     public function purchase(){
