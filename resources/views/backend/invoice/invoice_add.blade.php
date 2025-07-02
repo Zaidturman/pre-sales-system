@@ -143,11 +143,7 @@
             <option value="bank_transfer">حوالة بنكية</option>
         </select>
     </div>
-    <div class="col-md-6">
-        <label for="discount_amount">مبلغ الخصم</label>
-        <input type="number" name="discount_amount" id="discount_amount" 
-               class="form-control" value="0" min="0" step="0.01">
-    </div>
+  
 </div>
                                         </div>
 
