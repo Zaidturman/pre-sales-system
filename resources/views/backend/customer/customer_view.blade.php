@@ -118,8 +118,11 @@
                                 <table class="table table-bordered">
                                     <thead>
                                         <tr>
+                                            <th>رقم الدفعة</th>
                                             <th>التاريخ</th>
                                             <th>المبلغ المدفوع</th>
+                                            <th>  تعديل</th>
+
 
 
                                         </tr>
@@ -129,9 +132,14 @@
                                         @foreach ($partialpayments as $p)
 
                                         <tr>
+                                            <td class="  text-center fw-bold ">{{ $p->id }}</td>
+
                                             <td class="  text-center fw-bold ">{{ $p->payment_date }}</td>
                                             <td class=" bg-success text-white text-center fw-bold ">{{ $p->amount }}</td>
+                                            <td>
 
+                                                <a href="{{ route('partialpayments.edit',  $p->id ) }}" class="btn btn-info btn-sm">تعديل الدفعة</a>
+                                            </td>
 
                                         </tr>
 
@@ -170,6 +178,7 @@
                                 <a href="javascript:sendWhatsApp()" class="btn btn-primary waves-effect waves-light">
                                     <i class="fab fa-whatsapp"></i> إرسال عبر واتساب
                                 </a>
+                                <a href="javascript:sendAllInvoices()" class="btn btn-success">إرسال جميع الفواتير عبر واتساب</a>
                             </div>
                         </div>
 
@@ -183,21 +192,37 @@
 <script type="text/javascript">
     function sendWhatsApp() {
         var customerName = "{{ $customer->name }}";
-        var totalDue = "{{ $total_due }}";
-        var totalPaid = "{{ $total_paid }}";
-        var totalAmount = "{{ $total }}";
-        var phoneNumber = "{{ $customer->mobile_no }}"; // رقم الهاتف من قاعدة البيانات
+        var phoneNumber = "{{ $customer->mobile_no }}";
 
-        if (!phoneNumber) {
-            alert("رقم الهاتف غير متوفر لهذا الزبون.");
-            return;
-        }
+       
+        var message = `*تفاصيل الفواتير للزبون: ${customerName}*\n\n`;
+        
+        @foreach($Payments as $payment)
+            message += `*فاتورة رقم: {{ $payment->invoice->invoice_no ?? 'N/A' }}*\n`;
+            message += `التاريخ: {{ optional($payment->invoice)->date ?? 'لا يوجد تاريخ' }}\n`;
+            message += `حالة الدفع: {{ $payment->paid_status == 'partial_paid' ? 'جزئي' : ($payment->paid_status == 'full_paid' ? 'مدفوعة كامل' : ($payment->paid_status == 'full_due' ? 'دين كامل' : $payment->paid_status)) }}\n`;
+            message += `المبلغ الإجمالي: ₪{{ $payment->total_amount }}\n`;
+            message += `المبلغ المدفوع: ₪{{ $payment->paid_amount }}\n`;
+            message += `المبلغ المتبقي: ₪{{ $payment->due_amount }}\n`;
+            
+            // إضافة تفاصيل البضائع
+            message += `\n*المنتجات:*\n`;
+            @if(isset($payment->invoice) && $payment->invoice->invoiceDetails)
+                @foreach($payment->invoice->invoiceDetails as $detail)
+                    message += `- {{ $detail->product->name ?? 'منتج محذوف' }}: {{ $detail->quantity }} × ₪{{ $detail->unit_price }} = ₪{{ $detail->quantity * $detail->unit_price }}\n`;
+                @endforeach
+            @else
+                message += `لا توجد تفاصيل منتجات متاحة\n`;
+            @endif
+            
+            message += `\n────────────────\n\n`;
+        @endforeach
 
-        var message = `تفاصيل الفاتورة:
-الزبون: ${customerName}
-المبلغ الإجمالي: ₪${totalAmount}
-المبلغ المدفوع: ₪${totalPaid}
-المبلغ المتبقي: ₪${totalDue}`;
+        // إضافة المجاميع النهائية
+        message += `*الاجماليات النهائية:*\n`;
+        message += `المبلغ الإجمالي الكلي: ₪{{ $total }}\n`;
+        message += `المبلغ المدفوع الكلي: ₪{{ $total_paid }}\n`;
+        message += `المبلغ المتبقي الكلي: ₪{{ $total_due }}\n\n`;
 
         var url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
@@ -213,6 +238,23 @@
             reader.readAsDataURL(e.target.files['0']);
         });
     });
+    function sendAllInvoices() {
+    var customerName = "{{ $customer->name }}";
+    var phoneNumber = "{{ $customer->mobile_no }}";
+    var message = `*جميع فواتير الزبون: ${customerName}*\n\n`;
+
+    @foreach($Payments as $payment)
+        message += `*رقم الفاتورة: {{ $payment->invoice->invoice_no }}*\n`;
+        message += `التاريخ: {{ $payment->invoice->date }}\n`;
+        @foreach($payment->invoice->invoice_details as $detail)
+            message += `- {{ $detail->product->name }}: {{ $detail->quantity }} × ₪{{ number_format($detail->selling_price, 2) }}\n`;
+        @endforeach
+        message += `الإجمالي: ₪{{ number_format($payment->total_amount, 2) }} | المدفوع: ₪{{ number_format($payment->paid_amount, 2) }} | المتبقي: ₪{{ number_format($payment->due_amount, 2) }}\n\n`;
+    @endforeach
+
+    var url = `https://wa.me/{{ $customer->mobile_no }}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+}
 </script>
 
 <script type="text/javascript">
