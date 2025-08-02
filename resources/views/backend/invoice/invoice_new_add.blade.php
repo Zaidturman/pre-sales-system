@@ -499,12 +499,14 @@
                                                         <div class="row">
                                                             <!-- قسم الصورة -->
                                                             <div class="col-md-5 mb-3 mb-md-0">
-                                                                <div class="product-image-container bg-light rounded-3 p-3 text-center"
-                                                                    style="height: 300px;">
-                                                                    <img id="modal-product-image" src=""
-                                                                        alt="صورة المنتج"
-                                                                        class="img-fluid h-100 object-fit-contain"
-                                                                        onerror="this.src='https://via.placeholder.com/400x400?text=لا+توجد+صورة'">
+                                                                <div class="col-md-5 mb-3 mb-md-0">
+                                                                    <div class="product-image-container bg-light rounded-3 p-3 text-center"
+                                                                        style="height: 300px;">
+                                                                        <img id="modal-product-image" src=""
+                                                                            alt="صورة المنتج"
+                                                                            class="img-fluid h-100 object-fit-contain"
+                                                                            onerror="this.src='https://via.placeholder.com/400x400?text=لا+توجد+صورة'">
+                                                                    </div>
                                                                 </div>
                                                             </div>
 
@@ -720,9 +722,7 @@
             // عرض الصورة
             const modalImage = document.getElementById('modal-product-image');
             modalImage.src = imageUrl;
-            modalImage.onerror = function() {
-                this.src = 'https://via.placeholder.com/400x400?text=لا+توجد+صورة';
-            };
+
         }
 
         $(document).ready(function() {

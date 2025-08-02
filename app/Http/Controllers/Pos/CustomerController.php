@@ -8,14 +8,47 @@ use App\Models\Customer;
 use App\Models\Payment;
 use App\Models\PaymentDetail;
 use App\Models\PartialPayment;
-
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\View;
 use Auth;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth as FacadesAuth;
 use Image;
+use Mpdf\Mpdf;
+
+
 
 class CustomerController extends Controller
 {
+
+
+
+    public function generateInvoicesPDF($id)
+    {
+        $customer = Customer::findOrFail($id);
+        $payments = Payment::where('customer_id', $id)
+            ->with('invoice.invoice_details.product')
+            ->get();
+
+        $safeName = preg_replace('/[\/\\\\<>?:"*|]/', '-', $customer->name);
+        $safeName = trim($safeName, '-.');
+        $filename = 'فواتير_الزبون_' . $safeName . '.pdf';
+
+        $mpdf = new Mpdf([
+            'mode' => 'utf-8',
+            'format' => 'A4',
+            'orientation' => 'P',
+            'default_font' => 'sans-serif',
+            'autoScriptToLang' => true,
+            'autoLangToFont' => true,
+            'directionality' => 'rtl'
+        ]);
+
+        $html = view('backend.customer.customer_invoices_pdf', compact('customer', 'payments'))->render();
+        $mpdf->WriteHTML($html);
+
+        return $mpdf->Output($filename, 'I');
+    }
     public function CustomerAll()
     {
         $customers = Customer::latest()->get();

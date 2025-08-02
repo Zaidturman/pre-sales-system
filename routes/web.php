@@ -299,7 +299,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/get-product', 'GetProduct')->name('get-product');
         Route::get('/check-product-stock', 'GetStock')->name('check-product-stock');
     });
-
+    Route::get('/customer/{id}/invoices/pdf', [CustomerController::class, 'generateInvoicesPDF'])->name('customer.invoices.pdf');
 
     // Invoice All route
     Route::controller(InvoiceController::class)->group(function () {
