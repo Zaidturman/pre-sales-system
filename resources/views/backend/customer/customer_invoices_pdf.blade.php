@@ -116,12 +116,14 @@
                     </tr>
                 </thead>
                 <tbody>
+
                     @foreach ($payment->invoice->invoice_details as $detail)
                         <tr>
+
                             <td>{{ $detail->product->name ?? 'منتج محذوف' }}</td>
-                            <td>{{ $detail->quantity }}</td>
+                            <td>{{ $detail->selling_qty }}</td>
                             <td>₪{{ number_format($detail->selling_price, 2) }}</td>
-                            <td>₪{{ number_format($detail->quantity * $detail->selling_price, 2) }}</td>
+                            <td>₪{{ number_format($detail->selling_qty * $detail->selling_price, 2) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
