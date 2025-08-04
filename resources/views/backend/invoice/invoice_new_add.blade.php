@@ -504,8 +504,7 @@
                                                                         style="height: 300px;">
                                                                         <img id="modal-product-image" src=""
                                                                             alt="صورة المنتج"
-                                                                            class="img-fluid h-100 object-fit-contain"
-                                                                            onerror="this.src='https://via.placeholder.com/400x400?text=لا+توجد+صورة'">
+                                                                            class="img-fluid h-100 object-fit-contain">
                                                                     </div>
                                                                 </div>
                                                             </div>
