@@ -12,7 +12,8 @@
     <link rel="shortcut icon" href="{{ asset('backend/assets/images/favicon.ico') }}">
 
     <!-- Bootstrap Css -->
-    <link href="{{ asset('backend/assets/css/bootstrap.min.css') }}" id="bootstrap-style" rel="stylesheet" type="text/css" />
+    <link href="{{ asset('backend/assets/css/bootstrap.min.css') }}" id="bootstrap-style" rel="stylesheet"
+        type="text/css" />
     <!-- Icons Css -->
     <link href="{{ asset('backend/assets/css/icons.min.css') }}" rel="stylesheet" type="text/css" />
     <!-- App Css-->
@@ -21,8 +22,9 @@
     <!-- Toastr CDN Css -->
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.css">
     <style>
-        .auth-body-bg{
-            direction: rtl
+        .auth-body-bg {
+            direction: rtl;
+
         }
     </style>
 </head>
@@ -37,8 +39,10 @@
                     <div class="text-center mt-4">
                         <div class="mb-3">
                             <a href="index.html" class="auth-logo">
-                                <img src="{{ asset('backend/assets/images/logo-light.png') }}" height="100" class="logo-dark mx-auto" alt="">
-                                <img src="{{ asset('backend/assets/images/logo-dark.png') }}" height="100" class="logo-light mx-auto" alt="">
+                                <img src="{{ asset('backend/assets/images/logo-light.png') }}" height="100"
+                                    class="logo-dark mx-auto" alt="logo">
+                                <img src="{{ asset('backend/assets/images/logo-dark.png') }}" height="100"
+                                    class="logo-light mx-auto" alt="logo">
                             </a>
                         </div>
                     </div>
@@ -51,13 +55,15 @@
 
                             <div class="form-group mb-3 row">
                                 <div class="col-12">
-                                    <input class="form-control" type="text" id="username" name="username" required="" placeholder="اسم المستخدم">
+                                    <input class="form-control" type="text" id="username" name="username"
+                                        required="" placeholder="اسم المستخدم">
                                 </div>
                             </div>
 
                             <div class="form-group mb-3 row">
                                 <div class="col-12">
-                                    <input class="form-control" type="password" id="password" name="password" required="" placeholder="كلمة المرور">
+                                    <input class="form-control" type="password" id="password" name="password"
+                                        required="" placeholder="كلمة المرور">
                                 </div>
                             </div>
 
@@ -72,12 +78,13 @@
 
                             <div class="form-group mb-3 text-center row mt-3 pt-1">
                                 <div class="col-12">
-                                    <button class="btn btn-info w-100 waves-effect waves-light" type="submit">تسجيل دخول</button>
+                                    <button class="btn btn-info w-100 waves-effect waves-light" type="submit">تسجيل
+                                        دخول</button>
                                 </div>
                             </div>
 
                             <div class="form-group mb-0 row mt-2">
-                            <!--     <div class="col-sm-7 mt-3">
+                                <!--     <div class="col-sm-7 mt-3">
                                     <a href="{{ route('password.request') }}" class="text-muted"><i class="mdi mdi-lock"></i> Forgot your password?</a>
                                 </div> -->
 
@@ -107,25 +114,25 @@
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 
     <script>
-        @if(Session::has('message'))
-        var type = "{{ Session::get('alert-type','info') }}"
-        switch (type) {
-            case 'info':
-                toastr.info(" {{ Session::get('message') }} ");
-                break;
+        @if (Session::has('message'))
+            var type = "{{ Session::get('alert-type', 'info') }}"
+            switch (type) {
+                case 'info':
+                    toastr.info(" {{ Session::get('message') }} ");
+                    break;
 
-            case 'success':
-                toastr.success(" {{ Session::get('message') }} ");
-                break;
+                case 'success':
+                    toastr.success(" {{ Session::get('message') }} ");
+                    break;
 
-            case 'warning':
-                toastr.warning(" {{ Session::get('message') }} ");
-                break;
+                case 'warning':
+                    toastr.warning(" {{ Session::get('message') }} ");
+                    break;
 
-            case 'error':
-                toastr.error(" {{ Session::get('message') }} ");
-                break;
-        }
+                case 'error':
+                    toastr.error(" {{ Session::get('message') }} ");
+                    break;
+            }
         @endif
     </script>
 </body>
