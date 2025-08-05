@@ -26,6 +26,8 @@ class CustomerController extends Controller
     public function generateInvoicesPDF($id)
     {
         $customer = Customer::findOrFail($id);
+
+
         $payments = Payment::where('customer_id', $id)
             ->with('invoice.invoice_details.product')
             ->get();
