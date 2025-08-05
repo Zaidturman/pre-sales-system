@@ -200,7 +200,7 @@
             <h3>معلومات المستند</h3>
             <p><strong>رقم المرجع:</strong> CLR-{{ date('Ymd') }}-{{ rand(100, 999) }}</p>
             <p><strong>تاريخ التقرير:</strong> {{ date('Y-m-d') }}</p>
-            <p><strong>الصفحة:</strong> 1 من 1</p>
+
         </div>
     </div>
 
