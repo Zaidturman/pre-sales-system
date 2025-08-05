@@ -74,26 +74,40 @@ class ProductController extends Controller
     public function ProductUpdate(Request $request)
     {
         $product_id = $request->id;
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'unit_id' => 'required|exists:units,id',
+            'category_id' => 'required|exists:categories,id',
+            'price' => 'nullable|numeric|min:0',
+            'descr' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+        ]);
+
         $imagePath = null;
         if ($request->hasFile('image')) {
+            // حذف الصورة القديمة (اختياري)
+            // يمكنك إضافة منطق لحذف الصورة القديمة من المجلد
+
             $imagePath = $request->file('image')->store('products', 'public');
         }
 
-        Product::FindOrFail($product_id)->update([
-            'name' => $request->name,
-            'unit_id' => $request->unit_id,
-            'category_id' => $request->category_id,
+        $product = Product::findOrFail($product_id);
+        $product->update([
+            'name' => $validated['name'],
+            'unit_id' => $validated['unit_id'],
+            'category_id' => $validated['category_id'],
             'price' => $validated['price'] ?? 0,
             'descr' => $validated['descr'] ?? null,
-            'image_url' => $imagePath ? asset('storage/' . $imagePath) : null,
-            'updated_by' => Auth::user()->id,
-            'updated_at' => Carbon::now(),
+            'image_url' => $imagePath ? asset('storage/' . $imagePath) : $product->image_url,
+            'updated_by' => Auth::id(),
+            'updated_at' => now(),
         ]);
 
-        $notification = array(
-            'message' => 'Supplier Updated Successfully',
+        $notification = [
+            'message' => 'تم تحديث المنتج بنجاح',
             'alert-type' => 'success'
-        );
+        ];
 
         return redirect()->route('product.all')->with($notification);
     }
