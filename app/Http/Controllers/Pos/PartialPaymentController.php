@@ -199,21 +199,40 @@ class PartialPaymentController extends Controller
         }
     }
 
+
+    public function destroy($id)
+    {
+        $payment = PartialPayment::findOrFail($id);
+        $customerId = $payment->customer_id;
+        $amountToReverse = $payment->net_amount;
+
+        // 1. استرجاع المبلغ من الفواتير (إعادة المبالغ المدفوعة إلى الفواتير كمستحقات)
+        $this->reversePaymentFromInvoices($payment, $amountToReverse);
+
+        // 2. حذف الدفعة
+        $payment->delete();
+
+        // 3. إشعار النجاح
+        $notification = [
+            'message' => 'تم حذف الدفعة بنجاح وإعادة المبلغ إلى الفواتير.',
+            'alert-type' => 'success'
+        ];
+
+        return redirect()->route('customer.all')->with($notification);
+    }
     protected function reversePaymentFromInvoices(PartialPayment $payment, $amount)
     {
         $invoices = Payment::where('customer_id', $payment->customer_id)
             ->where('paid_amount', '>', 0)
-            ->orderBy('created_at', 'desc')
+            ->orderBy('created_at', 'desc') // من الأحدث إلى الأقدم
             ->get();
 
         foreach ($invoices as $invoice) {
             if ($amount <= 0) break;
-
             $reverseAmount = min($amount, $invoice->paid_amount);
             $invoice->paid_amount -= $reverseAmount;
             $invoice->due_amount += $reverseAmount;
             $invoice->save();
-
             $amount -= $reverseAmount;
         }
     }

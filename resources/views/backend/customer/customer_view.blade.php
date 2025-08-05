@@ -144,6 +144,12 @@
 
                                                         <a href="{{ route('partialpayments.edit', $p->id) }}"
                                                             class="btn btn-info btn-sm">تعديل الدفعة</a>
+
+
+                                                        <a href="{{ route('partialpayments.destroy', $p->id) }}"
+                                                            class="btn btn-danger sm" title="Delete Data" id="delete"><i
+                                                                class="fas fa-trash"></i></a>
+
                                                     </td>
 
                                                 </tr>
@@ -188,6 +194,7 @@
                             </div>
 
                         </div>
+
                     </div>
                 </div> <!-- end col -->
             </div>
