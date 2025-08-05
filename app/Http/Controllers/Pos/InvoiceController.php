@@ -117,6 +117,8 @@ class InvoiceController extends Controller
             'date' => 'required|date',
             'payment_method' => 'required|in:نقدي شيكل,نقدي دينار,شيك,حوالة بنكية',
             'discount_amount' => 'nullable|numeric|min:0',
+            'category_id' => 'required|array',
+            'category_id.*' => 'exists:categories,id',
             'product_id' => 'required|array',
             'product_id.*' => 'exists:products,id',
             'selling_qty' => 'required|array',
@@ -177,7 +179,7 @@ class InvoiceController extends Controller
             $payment->total_amount = $totalAmount; // الإجمالي قبل الخصم
 
             $totalAfterDiscount = $totalAmount - ($request->discount_amount ?? 0);
-
+            $payment->total_amount = $totalAfterDiscount;
             if ($request->paid_status == 'full_paid') {
                 $payment->paid_amount = $totalAfterDiscount;
                 $payment->due_amount = 0;
