@@ -15,6 +15,8 @@ use App\Models\Payment;
 use App\Models\PaymentDetail;
 use App\Models\Customer;
 use App\Models\User;
+use App\Models\PartialPayment;
+
 
 use Auth;
 use Illuminate\Support\Carbon;
@@ -177,8 +179,8 @@ class InvoiceController extends Controller
             $payment->paid_status = $request->paid_status;
             $payment->discount_amount = $request->discount_amount ?? 0;
             $payment->total_amount = $totalAmount; // الإجمالي قبل الخصم
-
             $totalAfterDiscount = $totalAmount - ($request->discount_amount ?? 0);
+
             $payment->total_amount = $totalAfterDiscount;
             if ($request->paid_status == 'full_paid') {
                 $payment->paid_amount = $totalAfterDiscount;
@@ -467,6 +469,14 @@ class InvoiceController extends Controller
         $createdById = $invoice->created_by;
         // استرجاع المستخدم الذي أنشأ الفاتورة
         $creator = User::find($createdById);
+        $partialPayments = PartialPayment::whereHas('invoices', function($query) use ($id) {
+            $query->where('invoice_id', $id);
+        })
+        ->with(['invoices' => function($query) use ($id) {
+            $query->where('invoice_id', $id);
+        }])
+        ->orderBy('payment_date', 'asc')
+        ->get();
         // الحصول على اسم المستخدم
         // تعريف طرق الدفع المتاحة
         $paymentMethods = [
@@ -480,7 +490,7 @@ class InvoiceController extends Controller
         $invoice->payment_method_name = $paymentMethods[$invoice->payment_method] ?? $invoice->payment_method;
 
         $creatorName =  $creator->name;
-        return view('backend.pdf.invoice_pdf', compact('invoice', 'creatorName'));
+        return view('backend.pdf.invoice_pdf', compact('invoice', 'creatorName','partialPayments'));
     }
 
     public function DailyInvoiceReport()

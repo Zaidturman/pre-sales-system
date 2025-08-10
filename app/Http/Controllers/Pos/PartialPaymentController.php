@@ -12,77 +12,84 @@ class PartialPaymentController extends Controller
 {
     public function create($id)
     {
-
-        // يمكنك التحقق من وجود العميل وتضمينه في البيانات التي سترسل إلى العرض
-
         $customer = Customer::findOrFail($id);
+        
+        // جلب الفواتير التي لها مستحقات
+        $invoices = Payment::where('customer_id', $id)
+            ->where('due_amount', '>', 0)
+            ->orderBy('created_at', 'asc')
+            ->get();
 
-
-        return view('backend.customer.add_pind', compact('customer'));
+        return view('backend.customer.add_pind', compact('customer', 'invoices'));
     }
+
     public function store(Request $request)
     {
         $request->validate([
             'customer_id' => 'required|exists:customers,id',
-            'amount' => 'required|numeric|min:0',
+            'amount' => 'required|numeric|min:0.01',
             'payment_date' => 'required|date',
             'discount_amount' => 'nullable|numeric|min:0',
-            'payment_method' => 'required|in:cash_shekel,cash_dinar,check'
+            'payment_method' => 'required|in:cash_shekel,cash_dinar,check',
+            'invoice_id' => 'nullable|exists:invoices,id' // إضافة اختيار الفاتورة
         ]);
 
-        // تعيين القيم العربية للعرض
-        $paymentMethods = [
-            'cash_shekel' => 'نقدي شيكل',
-            'cash_dinar' => 'نقدي دينار',
-            'check' => 'شيك'
-        ];
-
+        // حساب المبلغ الصافي
         $netAmount = $request->amount - ($request->discount_amount ?? 0);
 
+        // إنشاء الدفعة
         $payment = PartialPayment::create([
             'customer_id' => $request->customer_id,
+           
             'amount' => $request->amount,
             'discount_amount' => $request->discount_amount ?? 0,
-            'net_amount' => $netAmount,
-            'payment_method' => $request->payment_method, // تخزين القيمة الإنجليزية
+            'payment_method' => $request->payment_method,
             'payment_date' => $request->payment_date,
-            'notes' => $request->notes
         ]);
 
-        $this->applyPaymentToInvoices($payment, $netAmount);
+        // تطبيق الدفعة على الفواتير
+        $this->applyPaymentToInvoices($payment, $netAmount );
 
-        $notification = [
-            'message' => 'تم إضافة الدفعة بنجاح وتطبيقها على الفواتير.',
+        return redirect()->route('customer.all')->with([
+            'message' => 'تم إضافة الدفعة بنجاح',
             'alert-type' => 'success'
-        ];
-
-        return redirect()->route('customer.all')->with($notification);
+        ]);
     }
+
     public function edit($id)
     {
         $payment = PartialPayment::findOrFail($id);
         $customer = $payment->customer;
-        return view('backend.customer.edit_partial_payment', compact('payment', 'customer'));
+        
+        // جلب الفواتير المتاحة لهذا الزبون
+        $invoices = Payment::where('customer_id', $customer->id)
+            ->where('due_amount', '>', 0)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        return view('backend.customer.edit_partial_payment', compact('payment', 'customer', 'invoices'));
     }
 
     public function update(Request $request, $id)
     {
         $request->validate([
-            'amount' => 'required|numeric|min:0',
+            'amount' => 'required|numeric|min:0.01',
             'payment_date' => 'required|date',
             'discount_amount' => 'nullable|numeric|min:0',
-            'payment_method' => 'required|in:cash_shekel,cash_dinar,check'
+            'payment_method' => 'required|in:cash_shekel,cash_dinar,check',
+            'invoice_id' => 'nullable|exists:invoices,id'
         ]);
 
-        $partialPayment = PartialPayment::findOrFail($id);
-        $oldNetAmount = $partialPayment->net_amount;
+        $payment = PartialPayment::findOrFail($id);
+        $oldNetAmount = $payment->net_amount;
         $newNetAmount = $request->amount - ($request->discount_amount ?? 0);
 
-        // معالجة الفواتير أولاً
-        $this->updateInvoicePayments($partialPayment, $oldNetAmount, $newNetAmount);
+        // استرجاع المبلغ القديم من الفواتير
+        $this->reversePaymentFromInvoices($payment, $oldNetAmount);
 
-        // ثم تحديث بيانات الدفعة
-        $partialPayment->update([
+        // تحديث بيانات الدفعة
+        $payment->update([
+            'invoice_id' => $request->invoice_id,
             'amount' => $request->amount,
             'discount_amount' => $request->discount_amount ?? 0,
             'net_amount' => $newNetAmount,
@@ -91,171 +98,92 @@ class PartialPaymentController extends Controller
             'notes' => $request->notes,
         ]);
 
+        // تطبيق المبلغ الجديد على الفواتير
+        $this->applyPaymentToInvoices($payment, $newNetAmount);
+
         return redirect()->route('customer.all')->with([
-            'message' => 'تم تحديث الدفعة بنجاح.',
+            'message' => 'تم تحديث الدفعة بنجاح',
             'alert-type' => 'success'
         ]);
     }
 
-    protected function handlePaymentUpdate(PartialPayment $payment, $oldAmount, $newAmount, $difference)
-    {
-        if ($difference == 0) {
-            return; // لا يوجد تغيير في المبلغ
-        }
-
-        // استرجاع المبلغ القديم أولاً
-        $this->reverseFullPayment($payment, $oldAmount);
-
-        // تطبيق المبلغ الجديد
-        $this->applyPaymentToInvoices($payment, $newAmount);
-    }
-
-    protected function reverseFullPayment(PartialPayment $payment, $amountToReverse)
-    {
-        // نسترجع المبلغ بنفس الترتيب العكسي للدفع
-        $invoices = Payment::where('customer_id', $payment->customer_id)
-            ->where('paid_amount', '>', 0)
-            ->orderBy('created_at', 'desc') // من الأحدث إلى الأقدم
-            ->get();
-
-        foreach ($invoices as $invoice) {
-            if ($amountToReverse <= 0) break;
-
-            $reverseAmount = min($amountToReverse, $invoice->paid_amount);
-            $invoice->paid_amount -= $reverseAmount;
-            $invoice->due_amount += $reverseAmount;
-            $invoice->save();
-
-            $amountToReverse -= $reverseAmount;
-        }
-    }
-
-    protected function updateInvoicePayments(PartialPayment $payment, $oldAmount, $newAmount)
-    {
-        // 1. استرجاع المبلغ القديم بالكامل
-        $this->reversePaymentFromInvoices($payment, $oldAmount);
-
-        // 2. تطبيق المبلغ الجديد بالكامل
-        $this->applyPaymentToInvoices($payment, $newAmount);
-    }
-
-    protected function reverseFromLatestInvoice($customerId, $amountToReverse)
-    {
-        // الحصول على آخر فاتورة مدفوعة (من الأحدث إلى الأقدم)
-        $latestPaidInvoice = Payment::where('customer_id', $customerId)
-            ->where('paid_amount', '>', 0)
-            ->orderBy('created_at', 'desc')
-            ->first();
-
-        if ($latestPaidInvoice) {
-            // لا نسمح بخصم أكثر من المبلغ المدفوع في الفاتورة
-            $reverseAmount = min($amountToReverse, $latestPaidInvoice->paid_amount);
-
-            $latestPaidInvoice->paid_amount -= $reverseAmount;
-            $latestPaidInvoice->due_amount += $reverseAmount;
-            $latestPaidInvoice->save();
-        }
-    }
-
-
-
-
-    protected function adjustInvoicesAfterUpdate(PartialPayment $payment, $difference)
-    {
-        // 1. أولاً نسترجع جميع الفواتير المرتبطة بهذه الدفعة سابقاً
-        $affectedInvoices = $payment->invoicePayments()->with('invoice')->get();
-
-        // 2. نرجع المبالغ المدفوعة إلى الفواتير الأصلية
-        foreach ($affectedInvoices as $invoicePayment) {
-            $invoice = $invoicePayment->invoice;
-            $invoice->due_amount += $invoicePayment->amount;
-            $invoice->paid_amount -= $invoicePayment->amount;
-            $invoice->save();
-
-            // حذف سجل التوزيع القديم
-            $invoicePayment->delete();
-        }
-
-        // 3. نطبق المبلغ الجديد للدفعة (بعد التعديل) على الفواتير
-        $this->applyPaymentToInvoices($payment, $payment->net_amount);
-    }
-
-    protected function applyPaymentToInvoices(PartialPayment $payment, $amount)
-    {
-        $invoices = Payment::where('customer_id', $payment->customer_id)
-            ->where('due_amount', '>', 0)
-            ->orderBy('created_at', 'asc')
-            ->get();
-
-        foreach ($invoices as $invoice) {
-            if ($amount <= 0) break;
-
-            $paymentAmount = min($amount, $invoice->due_amount);
-            $invoice->due_amount -= $paymentAmount;
-            $invoice->paid_amount += $paymentAmount;
-            $invoice->save();
-
-            $amount -= $paymentAmount;
-        }
-    }
-
-
     public function destroy($id)
     {
         $payment = PartialPayment::findOrFail($id);
-        $customerId = $payment->customer_id;
-        $amountToReverse = $payment->net_amount;
+        $netAmount = $payment->net_amount;
 
-        // 1. استرجاع المبلغ من الفواتير (إعادة المبالغ المدفوعة إلى الفواتير كمستحقات)
-        $this->reversePaymentFromInvoices($payment, $amountToReverse);
+        // استرجاع المبلغ من الفواتير
+        $this->reversePaymentFromInvoices($payment, $netAmount);
 
-        // 2. حذف الدفعة
+        // حذف الدفعة
         $payment->delete();
 
-        // 3. إشعار النجاح
-        $notification = [
-            'message' => 'تم حذف الدفعة بنجاح وإعادة المبلغ إلى الفواتير.',
+        return redirect()->route('customer.all')->with([
+            'message' => 'تم حذف الدفعة بنجاح',
             'alert-type' => 'success'
-        ];
-
-        return redirect()->route('customer.all')->with($notification);
-    }
-    protected function reversePaymentFromInvoices(PartialPayment $payment, $amount)
-    {
-        $invoices = Payment::where('customer_id', $payment->customer_id)
-            ->where('paid_amount', '>', 0)
-            ->orderBy('created_at', 'desc') // من الأحدث إلى الأقدم
-            ->get();
-
-        foreach ($invoices as $invoice) {
-            if ($amount <= 0) break;
-            $reverseAmount = min($amount, $invoice->paid_amount);
-            $invoice->paid_amount -= $reverseAmount;
-            $invoice->due_amount += $reverseAmount;
-            $invoice->save();
-            $amount -= $reverseAmount;
-        }
+        ]);
     }
 
-    /*   protected function applyPaymentToInvoices(PartialPayment $payment, $netAmount)
-    {
-        $invoices = Payment::where('customer_id', $payment->customer_id)
-            ->where('due_amount', '>', 0)
-            ->orderBy('created_at', 'asc')
-            ->get();
+    // ============ الوظائف المساعدة ============
 
-        $amountToApply = $netAmount;
+    protected function applyPaymentToInvoices(PartialPayment $payment, $amount)
+{
+    $appliedInvoices = collect(); // لتخزين الفواتير التي تم تطبيق الدفعة عليها
+    
+    $invoices = Payment::where('customer_id', $payment->customer_id)
+        ->where('due_amount', '>', 0)
+        ->orderBy('created_at', 'asc')
+        ->get();
 
-        foreach ($invoices as $invoice) {
-            if ($amountToApply <= 0) break;
+    foreach ($invoices as $invoice) {
+        if ($amount <= 0) break;
 
-            $paymentAmount = min($amountToApply, $invoice->due_amount);
-            $invoice->due_amount -= $paymentAmount;
-            $invoice->paid_amount += $paymentAmount;
+        $paymentAmount = min($amount, $invoice->due_amount);
+        $invoice->due_amount -= $paymentAmount;
+        $invoice->paid_amount += $paymentAmount;
+        $invoice->save();
 
-            $invoice->save();
+        // ربط الدفعة بالفاتورة مع المبلغ المطبق
+$payment->invoices()->attach($invoice->invoice_id, [
+    'amount' => $paymentAmount,
+    'created_at' => now(),
+    'updated_at' => now(),
+]);        $appliedInvoices->push($invoice->invoice_id);
 
-            $amountToApply -= $paymentAmount;
+        $amount -= $paymentAmount;
+    }
+
+   
+}
+
+  protected function reversePaymentFromInvoices(PartialPayment $payment, $amount)
+{
+    // استرجاع المبلغ من الفواتير المرتبطة بهذه الدفعة
+    $invoices = $payment->invoices()->orderBy('created_at', 'desc')->get();
+
+    foreach ($invoices as $invoice) {
+        if ($amount <= 0) break;
+
+        $pivotAmount = $invoice->pivot->amount;
+        $reverseAmount = min($amount, $pivotAmount);
+
+        $paymentInvoice = Payment::where('invoice_id', $invoice->id)->first();
+        if ($paymentInvoice) {
+            $paymentInvoice->paid_amount -= $reverseAmount;
+            $paymentInvoice->due_amount += $reverseAmount;
+            $paymentInvoice->save();
         }
-    } */
+
+        // تحديث المبلغ في جدول العلاقة
+        if ($pivotAmount == $reverseAmount) {
+            $payment->invoices()->detach($invoice->id);
+        } else {
+            $payment->invoices()->updateExistingPivot($invoice->id, [
+                'amount' => $pivotAmount - $reverseAmount
+            ]);
+        }
+
+        $amount -= $reverseAmount;
+    }
+}
 }
