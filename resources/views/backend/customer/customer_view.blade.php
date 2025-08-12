@@ -220,26 +220,6 @@
                 reader.readAsDataURL(e.target.files['0']);
             });
         });
-
-        function sendAllInvoices() {
-            var customerName = "{{ $customer->name }}";
-            var phoneNumber = "{{ $customer->mobile_no }}";
-            var message = `*جميع فواتير الزبون: ${customerName}*\n\n`;
-
-            @foreach ($Payments as $payment)
-                message += `*رقم الفاتورة: {{ $payment->invoice->invoice_no }}*\n`;
-                message += `التاريخ: {{ $payment->invoice->date }}\n`;
-                @foreach ($payment->invoice->invoice_details as $detail)
-                    message +=
-                        `- {{ $detail->product->name }}: {{ $detail->quantity }} × ₪{{ number_format($detail->selling_price, 2) }}\n`;
-                @endforeach
-                message +=
-                    `الإجمالي: ₪{{ number_format($payment->total_amount, 2) }} | المدفوع: ₪{{ number_format($payment->paid_amount, 2) }} | المتبقي: ₪{{ number_format($payment->due_amount, 2) }}\n\n`;
-            @endforeach
-
-            var url = `https://wa.me/{{ $customer->mobile_no }}?text=${encodeURIComponent(message)}`;
-            window.open(url, '_blank');
-        }
     </script>
 
     <script type="text/javascript"></script>
